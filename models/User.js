@@ -1,25 +1,37 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const userSchema = mongoose.Schema(
-    {
-       name:{
-        type:String,
-        required:true
-       },
-       
-        email:{
-            type:String,
-            required:true,
-            unique:true
- },
-
-        password:{
-            type:String,
-            required:true
-        },
+const userSchema = new mongoose.Schema(
+  {
+    name: { type: String, required: true },
+    email: {
+      type: String,
+      unique: true,
+      required: true,
+      lowercase: true,
+      trim: true,
     },
-        {timestamps:true}
-    );
+    password: { type: String, required: true },
+    role: {
+      type: String,
+      enum: ["user", "admin"],
+      default: "user",
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  { timestamps: true }
+);
 
-    export default mongoose.model("User",userSchema);
-    
+// Optional: enforce lowercase email before saving
+userSchema.pre("save", function (next) {
+  if (this.email) {
+    this.email = this.email.toLowerCase();
+  }
+  next();
+});
+
+const User = mongoose.model("User", userSchema);
+
+export default User;

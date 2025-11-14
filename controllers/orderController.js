@@ -1,19 +1,21 @@
-// controllers/orderController.js
-
 import Order from "../models/Order.js";
 
-// ✅ Create order
+// ✅ Create Order
 export const createOrder = async (req, res) => {
   try {
     const { orderItems, shippingAddress, paymentMethod, totalPrice } = req.body;
 
-    if (!orderItems || orderItems.length === 0) {
-      return res.status(400).json({ message: "No order items" });
+    if (!orderItems || !Array.isArray(orderItems) || orderItems.length === 0) {
+      return res.status(400).json({ message: "Order must contain at least one item" });
+    }
+
+    if (!shippingAddress || !paymentMethod || !totalPrice) {
+      return res.status(400).json({ message: "Missing required order details" });
     }
 
     const order = new Order({
-      orderItems,
       user: req.user._id,
+      orderItems,
       shippingAddress,
       paymentMethod,
       totalPrice,
@@ -26,25 +28,30 @@ export const createOrder = async (req, res) => {
   }
 };
 
-// ✅ Get order by ID
+// ✅ Get Order by ID
 export const getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id).populate("user", "name email");
 
-    if (order) {
-      res.json(order);
-    } else {
-      res.status(404).json({ message: "Order not found" });
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
     }
+
+    // Optional: restrict access to owner or admin
+    if (order.user._id.toString() !== req.user._id.toString() && req.user.role !== "admin") {
+      return res.status(403).json({ message: "Not authorized to view this order" });
+    }
+
+    res.json(order);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// ✅ Get my orders
+// ✅ Get My Orders
 export const getMyOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user: req.user._id });
+    const orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 });
     res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
