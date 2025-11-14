@@ -19,11 +19,20 @@ app.use(express.json());
 app.get("/api/test", (req, res) => {
   res.json({ message: "✅ Backend is working" });
 });
+//debug
+app.post("/api/auth/debug", (req, res) => {
+  res.json({ message: "✅ Debug route is working" });
+});
 
 // Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/products", productRoutes);
+
+// Optional: Root welcome route
+app.get("/", (req, res) => {
+  res.send("🚀 Welcome to the E-Commerce API!");
+});
 
 // Not found handler
 app.use((req, res, next) => {

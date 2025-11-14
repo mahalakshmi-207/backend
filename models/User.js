@@ -11,11 +11,6 @@ const userSchema = new mongoose.Schema(
       trim: true,
     },
     password: { type: String, required: true },
-    role: {
-      type: String,
-      enum: ["user", "admin"],
-      default: "user",
-    },
     isActive: {
       type: Boolean,
       default: true,
@@ -24,7 +19,7 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Optional: enforce lowercase email before saving
+// Ensure email is lowercase before saving
 userSchema.pre("save", function (next) {
   if (this.email) {
     this.email = this.email.toLowerCase();
