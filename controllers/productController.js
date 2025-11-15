@@ -3,9 +3,9 @@ import Product from "../models/Product.js";
 // Create a product
 const createProduct = async (req, res) => {
   try {
-    const { name, description, price, image, countInStock, category } = req.body;
+    const { name, description, price, image, countInStock } = req.body;
 
-    if (!name || !price || !image || !category) {
+    if (!name || !price || !image) {
       return res.status(400).json({ message: "Missing required product fields" });
     }
 
@@ -15,7 +15,6 @@ const createProduct = async (req, res) => {
       price,
       image,
       countInStock,
-      category,
       user: req.user._id,
     });
 
@@ -31,11 +30,9 @@ const getProducts = async (req, res) => {
   try {
     const page = Number(req.query.page) || 1;
     const limit = Number(req.query.limit) || 6;
-    const category = req.query.category;
     const search = req.query.search;
 
     const query = {};
-    if (category) query.category = category;
     if (search) query.name = { $regex: search, $options: "i" };
 
     const total = await Product.countDocuments(query);
@@ -76,7 +73,7 @@ const deleteProduct = async (req, res) => {
 // Update product
 const updateProduct = async (req, res) => {
   try {
-    const { name, description, price, image, countInStock, category } = req.body;
+    const { name, description, price, image, countInStock } = req.body;
     const product = await Product.findById(req.params.id);
 
     if (!product) return res.status(404).json({ message: "Product not found" });
@@ -86,7 +83,6 @@ const updateProduct = async (req, res) => {
     product.price = price || product.price;
     product.image = image || product.image;
     product.countInStock = countInStock || product.countInStock;
-    product.category = category || product.category;
 
     const updatedProduct = await product.save();
     res.json(updatedProduct);
@@ -106,69 +102,48 @@ const getMyProducts = async (req, res) => {
 };
 
 // Add review to product
- const addReview = async (req, res) => {
+const addReview = async (req, res) => {
   try {
-    console.log("🔍 Incoming review request");
-    console.log("User:", req.user);
-    console.log("Product ID:", req.params.id);
-    console.log("Body:", req.body);
-
-    const { rating, comment } = req.body;
+    const { name, rating, comment } = req.body;
     const product = await Product.findById(req.params.id);
 
-    if (!product) {
-      console.log("❌ Product not found");
-      return res.status(404).json({ message: "Product not found" });
+    if (!product) return res.status(404).json({ message: "Product not found" });
+    if (!rating || !comment || !name) {
+      return res.status(400).json({ message: "Name, rating, and comment are required" });
     }
 
-    if (!Array.isArray(product.reviews)) {
-      product.reviews = []; // ✅ Ensure it's an array
-    }
-
-    const alreadyReviewed = product.reviews.find(
-      (r) => r.user.toString() === req.user._id.toString()
-    );
-
+    const alreadyReviewed = product.reviews.find((r) => r.name === name);
     if (alreadyReviewed) {
-      return res.status(400).json({ message: "Product already reviewed" });
+      return res.status(400).json({ message: "You have already reviewed this product" });
     }
 
-    const review = {
-      name: req.user.name,
-      rating: Number(rating),
-      comment,
-      user: req.user._id,
-    };
-
-    product.reviews.push(review);
+    product.reviews.push({ name, rating: Number(rating), comment: comment.trim() });
     product.numReviews = product.reviews.length;
     product.rating =
-      product.reviews.reduce((acc, item) => item.rating + acc, 0) /
-      product.reviews.length;
+      product.reviews.reduce((acc, r) => acc + r.rating, 0) / product.numReviews;
 
     const updatedProduct = await product.save();
     res.status(201).json(updatedProduct);
   } catch (error) {
-    console.error("🔥 Review submission error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
 // Export products as CSV
-const exportProducts = async (req, res) => {
+async function exportProducts(req, res) {
   try {
     const products = await Product.find({});
     const csv = products
-      .map((p) => `"${p.name}","${p.price}","${p.category}"`)
+      .map((p) => `"${p.name}","${p.price}"`)
       .join("\n");
 
     res.setHeader("Content-Type", "text/csv");
     res.setHeader("Content-Disposition", "attachment; filename=products.csv");
-    res.send("Name,Price,Category\n" + csv);
+    res.send("Name,Price\n" + csv);
   } catch (error) {
     res.status(500).json({ message: "Export failed", error: error.message });
   }
-};
+}
 
 export {
   createProduct,
